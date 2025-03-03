@@ -2,6 +2,7 @@ package application
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 )
@@ -49,9 +50,31 @@ func New() *Orchestrator {
 	}
 }
 
+func (o *Orchestrator) CalculateHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("CalculateHandler")
+}
+
+func (o *Orchestrator) ExpressionsHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("ExpressionsHandler")
+}
+
+func (o *Orchestrator) ExpressionIDHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("ExpressionIDHandler")
+}
+
+func (o *Orchestrator) TaskHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		fmt.Println("TaskHandler GET")
+	} else if r.Method == http.MethodPost {
+		fmt.Println("TaskHandler POST")
+	}
+}
+
 func (o *Orchestrator) RunServer() error {
-	// http.HandleFunc("/api/v1/calculate", CheckMethodIsPost(Answer500(RPNHandler)))
-	// return http.ListenAndServe(":"+a.config.Addr, nil)
-	fmt.Println("Lets go")
-	return nil
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/calculate", o.CalculateHandler)
+	mux.HandleFunc("/api/v1/expressions", o.ExpressionsHandler)
+	mux.HandleFunc("/api/v1/expressions/", o.ExpressionIDHandler)
+	mux.HandleFunc("/internal/task", o.TaskHandler)
+	return http.ListenAndServe(":"+o.config.Addr, mux)
 }
