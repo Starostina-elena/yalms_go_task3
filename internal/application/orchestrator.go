@@ -2,10 +2,12 @@ package application
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 	"sync"
+
 	"github.com/Starostina-elena/yalms_go_task2/pkg/rpn"
 )
 
@@ -276,5 +278,6 @@ func (o *Orchestrator) RunServer() error {
 	mux.HandleFunc("/api/v1/expressions", o.ExpressionsHandler)
 	mux.HandleFunc("/api/v1/expressions/", o.ExpressionIDHandler)
 	mux.HandleFunc("/internal/task", o.TaskHandler)
+	fmt.Println("Orchestrator started")
 	return http.ListenAndServe(":"+o.config.Addr, mux)
 }
