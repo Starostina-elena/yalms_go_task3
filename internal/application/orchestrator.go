@@ -272,7 +272,7 @@ func (o *Orchestrator) TaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func errorHandling(handler func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
+func ErrorHandling(handler func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -285,10 +285,10 @@ func errorHandling(handler func(http.ResponseWriter, *http.Request)) http.Handle
 
 func (o *Orchestrator) RunServer() error {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/calculate", errorHandling(o.CalculateHandler))
-	mux.HandleFunc("/api/v1/expressions", errorHandling(o.ExpressionsHandler))
-	mux.HandleFunc("/api/v1/expressions/", errorHandling(o.ExpressionIDHandler))
-	mux.HandleFunc("/internal/task", errorHandling(o.TaskHandler))
+	mux.HandleFunc("/api/v1/calculate", ErrorHandling(o.CalculateHandler))
+	mux.HandleFunc("/api/v1/expressions", ErrorHandling(o.ExpressionsHandler))
+	mux.HandleFunc("/api/v1/expressions/", ErrorHandling(o.ExpressionIDHandler))
+	mux.HandleFunc("/internal/task", ErrorHandling(o.TaskHandler))
 	fmt.Println("Orchestrator started")
 	return http.ListenAndServe(":"+o.config.Addr, mux)
 }

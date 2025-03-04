@@ -32,13 +32,13 @@ func NewAgent() *Agent {
 
 func (a *Agent) Start() {
 	for i := 0; i < a.ComputingPower; i++ {
-		go a.runThread()
+		go a.RunThread()
 	}
 	fmt.Println("Agent started")
 	select{}
 }
 
-func (a *Agent) runThread() {
+func (a *Agent) RunThread() {
 	for {
 		resp, err := http.Get(a.OrchestratorURL + "/internal/task")
 		if err != nil {
