@@ -21,6 +21,20 @@ func Calc(expression string) (float64, error) {
  	return evaluateRPN(rpn)
 }
 
+func Transform(expression string) ([]string, error) {
+	tokens, err := tokenize(expression)
+	if err != nil {
+		return nil, err
+	}
+
+	rpn, err := toRPN(tokens)
+	if err != nil {
+		return nil, err
+	}
+
+	return rpn, nil
+}
+
 func tokenize(expression string) ([]string, error) {
 	var tokens []string
  	var number strings.Builder
