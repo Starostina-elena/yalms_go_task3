@@ -2,7 +2,6 @@ package application
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -134,33 +133,80 @@ func (o *Orchestrator) getOperationTime(token string) int {
 	return 100
 }
 
+func (o *Orchestrator) createTask(expr *Expression, arg1str string, arg2str string, operation string) {
+	o.mu.Lock()
+	o.taskCurId++
+	arg1, _ := strconv.ParseFloat(arg1str, 64)
+	arg2, _ := strconv.ParseFloat(arg2str, 64)
+	if operation == "/" && arg2 == 0 {
+		expr.Status = "error: zero division"
+		for _, task := range o.taskStore {
+			if task.ExprID == expr.ID {
+				delete(o.taskStore, task.ID)
+			}
+		}
+	} else {
+		task := &Task{
+		ID: o.taskCurId,
+		ExprID: expr.ID,
+		Arg1: arg1,
+		Arg2: arg2,
+		Operation: operation,
+		OperationTime: o.getOperationTime(operation),
+	}
+	o.taskStore[o.taskCurId] = task
+	}
+	o.mu.Unlock()
+}
+
 func (o *Orchestrator) manageTasks(expr *Expression) {
 	for i, token := range expr.RPN {
 		if i >= 2 && isOperator(token) && !isOperator(expr.RPN[i-1]) && !isOperator(expr.RPN[i-2]) {
-			o.mu.Lock()
-			o.taskCurId++
-			arg1, _ := strconv.ParseFloat(expr.RPN[i-2], 64)
-			arg2, _ := strconv.ParseFloat(expr.RPN[i-1], 64)
-			task := &Task{
-				ID: o.taskCurId,
-				ExprID: expr.ID,
-				Arg1: arg1,
-				Arg2: arg2,
-				Operation: token,
-				OperationTime: o.getOperationTime(token),
-			}
-			o.taskStore[o.taskCurId] = task
-			o.mu.Unlock()
+			o.createTask(expr, expr.RPN[i-2], expr.RPN[i-1], token)
 		}
 	}
 }
 
 func (o *Orchestrator) ExpressionsHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("ExpressionsHandler")
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	o.mu.Lock()
+    defer o.mu.Unlock()
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+
+	all_expr := make([]*Expression, 0, len(o.exprStore))
+    for _, expr := range o.exprStore {
+        all_expr = append(all_expr, expr)
+    }
+
+    json.NewEncoder(w).Encode(map[string]interface{}{"expressions": all_expr})
 }
 
 func (o *Orchestrator) ExpressionIDHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("ExpressionIDHandler")
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	id, err := strconv.ParseInt(r.URL.Path[len("/api/v1/expressions/"):], 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+	o.mu.Lock()
+	expr, ok := o.exprStore[id]
+	o.mu.Unlock()
+	if !ok {
+		http.Error(w, "Id not found", http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"expression": expr})
 }
 
 func (o *Orchestrator) TaskHandler(w http.ResponseWriter, r *http.Request) {
@@ -192,12 +238,14 @@ func (o *Orchestrator) TaskHandler(w http.ResponseWriter, r *http.Request) {
 
 		o.mu.Lock()
 		task := o.taskStore[req.ID]
+		delete(o.taskStore, req.ID)
 		if task == nil {
 			http.Error(w, "task not found", http.StatusNotFound)
 			o.mu.Unlock()
 			return
 		}
 		expr := o.exprStore[task.ExprID]
+		o.mu.Unlock()
 		arg1 := strconv.FormatFloat(task.Arg1, 'f', -1, 64)
 		arg2 := strconv.FormatFloat(task.Arg2, 'f', -1, 64)
 		for i, token := range expr.RPN {
@@ -208,39 +256,15 @@ func (o *Orchestrator) TaskHandler(w http.ResponseWriter, r *http.Request) {
 					expr.Result = &req.Result
 				}
 				if i >= 2 && i < len(expr.RPN) && isOperator(expr.RPN[i]) && !isOperator(expr.RPN[i-1]) && !isOperator(expr.RPN[i-2]) {
-					o.taskCurId++
-					arg1, _ := strconv.ParseFloat(expr.RPN[i-2], 64)
-					arg2, _ := strconv.ParseFloat(expr.RPN[i-1], 64)
-					task := &Task{
-						ID: o.taskCurId,
-						ExprID: expr.ID,
-						Arg1: arg1,
-						Arg2: arg2,
-						Operation: expr.RPN[i],
-						OperationTime: o.getOperationTime(token),
-					}
-					o.taskStore[o.taskCurId] = task
+					o.createTask(expr, expr.RPN[i-2], expr.RPN[i-1], expr.RPN[i])
 				}
 				i--
 				if i >= 2 && i < len(expr.RPN) && isOperator(expr.RPN[i]) && !isOperator(expr.RPN[i-1]) && !isOperator(expr.RPN[i-2]) {
-					o.taskCurId++
-					arg1, _ := strconv.ParseFloat(expr.RPN[i-2], 64)
-					arg2, _ := strconv.ParseFloat(expr.RPN[i-1], 64)
-					task := &Task{
-						ID: o.taskCurId,
-						ExprID: expr.ID,
-						Arg1: arg1,
-						Arg2: arg2,
-						Operation: expr.RPN[i],
-						OperationTime: o.getOperationTime(token),
-					}
-					o.taskStore[o.taskCurId] = task
+					o.createTask(expr, expr.RPN[i-2], expr.RPN[i-1], expr.RPN[i])
 				}
 				break
 			}
 		}
-		delete(o.taskStore, req.ID)
-		o.mu.Unlock()
 	} else {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
