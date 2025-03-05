@@ -40,7 +40,7 @@ curl --location "http://localhost:8080/api/v1/calculate" --header "Content-Type:
 ```
 Некорректный запрос
 ```
-curl --location "http://localhost:8080/api/v1/calculate" --header "Content-Type: application/json" --data "{\"expression\": \"2+\"}"
+curl --location "http://localhost:8080/api/v1/calculate" --header "Content-Type: application/json" --data "{\"expression\": \"2+f\"}"
 ```
 Ответ (статус 422)
 ```
@@ -48,7 +48,7 @@ curl --location "http://localhost:8080/api/v1/calculate" --header "Content-Type:
 ```
 ### Получение всех выражений
 ```
-curl --location 'localhost/api/v1/expressions'
+curl --location "localhost:8080/api/v1/expressions"
 ```
 Ответ (статус 200)
 ```
@@ -71,7 +71,7 @@ curl --location 'localhost/api/v1/expressions'
 ### Получение выражения по id
 Корректный запрос
 ```
-curl --location 'localhost/api/v1/expressions/1'
+curl --location "localhost:8080/api/v1/expressions/1"
 ```
 Ответ (статус 200)
 ```
@@ -79,7 +79,7 @@ curl --location 'localhost/api/v1/expressions/1'
 ```
 Id не существует
 ```
-curl --location 'localhost/api/v1/expressions/100'
+curl --location "localhost:8080/api/v1/expressions/100"
 ```
 Ответ (статус 404)
 ```
@@ -87,7 +87,7 @@ Id not found
 ```
 Id некорректен
 ```
-curl --location 'localhost/api/v1/expressions/abc'
+curl --location "localhost:8080/api/v1/expressions/abc"
 ```
 Ответ (статус 400)
 ```
@@ -95,7 +95,7 @@ Invalid ID
 ```
 ### Получение задачи агентом
 ```
-curl --location 'localhost/internal/task'
+curl --location "localhost:8080/internal/task"
 ```
 Ответ (статус 200)
 ```
@@ -115,12 +115,7 @@ No tasks available
 ```
 ### Отправка результата вычисления задачи
 ```
-curl --location 'localhost/internal/task' \
---header 'Content-Type: application/json' \
---data '{
-  "id": 1,
-  "result": 2.5
-}'
+curl --location "localhost:8080/internal/task" --header "Content-Type: application/json" --data "{\"id\": 1, \"result\": 2.5}"
 ```
 Ответ (статус 200) - пустой </br>
 Ответ (статус 404)
@@ -129,9 +124,7 @@ task not found
 ```
 Некорректные данные:
 ```
-curl --location 'localhost/internal/task' \
---header 'Content-Type: application/json' \
---data 'ajfb'
+curl --location "localhost:8080/internal/task" --header "Content-Type: application/json" --data "{\"id\": 9, \"result\": 4"
 ```
 Ответ (статус 422)
 ```
