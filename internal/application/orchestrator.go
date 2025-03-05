@@ -167,6 +167,26 @@ func (o *Orchestrator) manageTasks(expr *Expression) {
 			o.createTask(expr, expr.RPN[i-2], expr.RPN[i-1], token)
 		}
 	}
+	o.checkExpression(expr)
+}
+
+func (o *Orchestrator) checkExpression(expr *Expression) {
+	if len(expr.RPN) == 2 {
+		expr.Status = "error: invalid expression"
+		return
+	}
+	for _, token := range expr.RPN {
+		if isOperator(token) {
+			return
+		}
+	}
+	if len(expr.RPN) == 1 {
+		expr.Status = "done"
+		result, _ := strconv.ParseFloat(expr.RPN[0], 64)
+		expr.Result = &result
+	} else {
+		expr.Status = "error: invalid expression"
+	}
 }
 
 func (o *Orchestrator) ExpressionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -253,10 +273,7 @@ func (o *Orchestrator) TaskHandler(w http.ResponseWriter, r *http.Request) {
 		for i, token := range expr.RPN {
 			if i >= 2 && token == task.Operation && expr.RPN[i-1] == arg2 && expr.RPN[i-2] == arg1 {
 				expr.RPN = append(expr.RPN[:i-2], append([]string{strconv.FormatFloat(req.Result, 'f', -1, 64)}, expr.RPN[i+1:]...)...)
-				if len(expr.RPN) == 1 {
-					expr.Status = "done"
-					expr.Result = &req.Result
-				}
+				o.checkExpression(expr)
 				if i >= 2 && i < len(expr.RPN) && isOperator(expr.RPN[i]) && !isOperator(expr.RPN[i-1]) && !isOperator(expr.RPN[i-2]) {
 					o.createTask(expr, expr.RPN[i-2], expr.RPN[i-1], expr.RPN[i])
 				}
